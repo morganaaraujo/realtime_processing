@@ -1,6 +1,8 @@
 import argparse
 import time
 
+import matplotlib.pyplot as plt
+
 import orjson
 from confluent_kafka import Consumer, KafkaError, KafkaException
 
@@ -40,6 +42,9 @@ def main():
 
     max_event_time_ms = None
     counts = {"green": 0, "orange": 0, "red": 0}
+    
+    # listas de dados
+    plot_data = { "x": [], "y": [], "colors": []}
 
     try:
         processed = 0
@@ -67,6 +72,10 @@ def main():
 
             current_watermark = max_event_time_ms - watermark_ms
             color = classify(event_time_ms, processing_time_ms, current_watermark, on_time_ms)
+            # Dados de cada mensagem processada
+            plot_data["x"].append(processing_time_ms)
+            plot_data["y"].append(event_time_ms)
+            plot_data["colors"].append(color)
             counts[color] += 1
             processed += 1
 
@@ -76,7 +85,41 @@ def main():
 
     print(f"green={counts['green']} orange={counts['orange']} red={counts['red']}")
     print(f"dlq_count={counts['red']}")
-    print("TODO: gerar grafico com processing_time (x) vs event_time (y) usando cores")
+
+    # Gráfico
+    plt.figure(figsize=(10, 6))
+    plt.scatter(plot_data["x"], plot_data["y"], c=plot_data["colors"], alpha=0.6)
+    plt.title("Processing Time vs Event Time")
+    plt.xlabel("Processing Time (ms)")
+    plt.ylabel("Event Time (ms)")
+    plt.grid(True)
+    plt.show()
+
+    # Gráfico
+    plt.figure(figsize=(10, 6))
+    
+    # 1. Desenha os pontos
+    plt.scatter(plot_data["x"], plot_data["y"], c=plot_data["colors"], alpha=0.6, label="Eventos")
+    
+    # 2. Adiciona a linha de referência y = x 
+    if plot_data["x"]:
+        lims = [
+            min(min(plot_data["x"]), min(plot_data["y"])),  
+            max(max(plot_data["x"]), max(plot_data["y"])),
+        ]
+        plt.plot(lims, lims, color='gray', linestyle='--', alpha=0.5, label="Referência y=x")
+
+    plt.title("Processing Time vs Event Time")
+    plt.xlabel("Processing Time (ms)")
+    plt.ylabel("Event Time (ms)")
+    plt.grid(True)
+    plt.legend()
+
+    # 3. Salva o arquivo
+    plt.savefig("resultado_processamento.png")
+    print("Gráfico salvo:'resultado_processamento.png'")
+    
+    plt.show()
 
 
 if __name__ == "__main__":
